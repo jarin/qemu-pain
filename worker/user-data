@@ -1,0 +1,63 @@
+#cloud-config
+hostname: k8s-worker-01
+fqdn: k8s-worker-01.example.com
+manage_etc_hosts: true
+
+
+users:
+  - default
+  - name: kubeadmin
+    groups: sudo, users, admin
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - your ssh key here
+    lock_passwd: false
+    passwd: your sha512 password here
+ssh_pwauth: True
+package_update: false
+package_upgrade: false
+package_reboot_if_required: true
+ssh_pwauth: true
+disable_root: false
+
+write_files:
+  - path: /home/kubeadmin/custom-containerd-config.yaml
+    content: |
+      containerd-base-dir: /var/snap/k8s/common/containerd
+    permissions: '0644'
+
+runcmd:
+  # Install the desired kernel version
+  - apt-get update
+  - apt-get install -y linux-image-6.8.0-55-generic linux-headers-6.8.0-55-generic
+
+  # Set the kernel as default in GRUB (using exact menu entry name)
+  - |
+    sed -i 's|^GRUB_DEFAULT=.*|GRUB_DEFAULT="Advanced options for Ubuntu>Ubuntu, with Linux 6.8.0-55-generic"|' /etc/default/grub
+    update-grub
+
+  # Pin the kernel version to block upgrades
+  - |
+    echo "Package: linux-image-6.8.0-55-generic linux-headers-6.8.0-55-generic" > /etc/apt/preferences.d/99-kernel-pin
+    echo "Pin: version 6.8.0-55*" >> /etc/apt/preferences.d/99-kernel-pin
+    echo "Pin-Priority: 1001" >> /etc/apt/preferences.d/99-kernel-pin
+  - echo '10.0.2.200 k8s-worker-01.example.com k8s-worker-01' > /etc/cloud/templates/hosts.debian.tmpl
+  - echo '127.0.0.1 localhost' >> /etc/cloud/templates/hosts.debian.tmpl
+  - snap install k8s --channel=1.32-classic/stable --classic
+  - snap start k8s.containerd
+  - snap start k8s.kubelet
+  - snap start k8s.kube-proxy
+  - snap start k8s.k8s-apiserver-proxy
+  - snap start --enable k8s.containerd
+  - snap start --enable k8s.kubelet
+  - snap start --enable k8s.kube-proxy
+  - snap start --enable k8s.k8s-apiserver-proxy
+
+final_message: "Kubernetes worker node setup complete."
+power_state:
+  delay: now
+  mode: reboot
+  message: "Reboot after upgrading Kernel"
+  condition: true
+
