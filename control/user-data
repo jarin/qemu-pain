@@ -44,7 +44,6 @@ runcmd:
   - curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.15.11/cilium-linux-amd64.tar.gz
   - tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
   - rm cilium-linux-amd64.tar.gz
-  - cilium install --version 1.17.3 --datapath-mode=tunnel --ipam cluster-pool --cluster-pool-ipv4-cidr 10.0.2.0/24
   - su - kubeadmin -c 'echo alias k=\"sudo k8s kubectl\" > ~/.bash_aliases'
 final_message: "Kubernetes control plane setup complete. Use 'kubectl get nodes' to verify."
 
